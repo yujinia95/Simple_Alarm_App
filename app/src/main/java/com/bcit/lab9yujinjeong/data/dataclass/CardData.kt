@@ -15,3 +15,11 @@ data class CardPair(
     val SecondPairId: Int
 )
 
+//This data class for completing UI state for the card game.
+data class CardGameUiState(
+    val cards: List<Card>           = emptyList(),
+    val isLoading: Boolean          = false,
+    val isWaitingForMatch: Boolean  = false,
+    val matchesFound: Int           = 0,
+    val GameCompleted: Boolean      = false
+)
