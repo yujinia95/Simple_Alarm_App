@@ -1,7 +1,9 @@
 package com.bcit.lab9yujinjeong.viewmodel
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.bcit.lab9yujinjeong.data.dataclass.Card
 import com.bcit.lab9yujinjeong.data.dataclass.CardGameUiState
 import com.bcit.lab9yujinjeong.data.imageAPI.ImageRepository
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -32,7 +34,7 @@ class CardGameViewModel(private val imageRepository: ImageRepository) : ViewMode
     private var firstFlippedCardIndex: Int? = null
 
     //For catching error in case coroutine fails.
-    private val exceptionHandler = CoroutineExceptionHandler {_, _ ->
+    private val exceptionHandler = CoroutineExceptionHandler { _, _ ->
 
         //If error occurs, retries initializeGame.
         viewModelScope.launch {
@@ -45,13 +47,15 @@ class CardGameViewModel(private val imageRepository: ImageRepository) : ViewMode
         initializeGame()
     }
 
-    //Initializing game (Starting new game).
+    /**
+     * Initializing game (Starting new with loading images and setting up the game state.).
+     */
     fun initializeGame() {
 
         viewModelScope.launch(exceptionHandler) {
 
             //Change current state isLoading to true.
-            _uiState.update {it.copy(isLoading = true)}
+            _uiState.update { it.copy(isLoading = true) }
 
             //'withContext(Dispatchers.IO)' switch to IO thread to get images.
             // If doesn't work throw err.
@@ -62,20 +66,141 @@ class CardGameViewModel(private val imageRepository: ImageRepository) : ViewMode
                     //If getting image fail, return null, but instead null return emptyList
                     imageRepository.getImagesForCards().getOrNull() ?: emptyList()
 
-                } catch (error: Exception){
+                } catch (error: Exception) {
                     emptyList()
                 }
             }
 
             val limitImageSource = imageSources.take(4)
+
             //Create pairs and mix it
-            val cardPairs = limitImageSource.flatMap{listOf(it, it)}.shuffled()
-
-            val cards = cardPairs.mapIndexed {index, imageSource ->
+            val cardPairs = limitImageSource.flatMap { listOf(it, it) }.shuffled()
+            //Creating card objs
+            val cards = cardPairs.mapIndexed { index, imageSource ->
                 Card(
-
+                    cardId = index,
+                    imageUrl = imageSource,
+                    isFlipped = false,  //False making cards starts face down
+                    isMatched = false
                 )
+            }.toMutableList()
+
+            //Making sure graves 8 cards.
+            if (cards.size >= 8) {
+                val gameCards = cards.take(8).toMutableList()
+                //'it' is pointing current state, and update the state with the prepared cards and
+                // reset other values.
+                _uiState.update {
+                    it.copy(
+                        cards = gameCards,
+                        isLoading = false,
+                        gameCompleted = false,
+                        matchesFound = 0
+                    )
+                }
             }
         }
+    }
+
+
+    /**
+     * This method handles clicking card during gameplay.
+     */
+    fun onCardClicked(cardIndex: Int) {
+
+        val currentState = _uiState.value
+        //Error handling if invalid card index, just ignore it.
+        if (cardIndex >= currentState.cards.size) return
+        //Copying cards to make changes later.
+        val cards = currentState.cards.toMutableList()
+        //If card is waiting for match(animation) or already matched, just ignore it.
+        if (currentState.isWaitingForMatch || cards[cardIndex].isMatched) return
+
+        //Flip card
+        cards[cardIndex] = cards[cardIndex].copy(isFlipped = true)
+        //Tracking which card is flipped first (For comparing with second flipped card).
+        when (firstFlippedCardIndex) {
+            //If there is no card flipped yet, set the card as first flipped card and update state.
+            null -> {
+                firstFlippedCardIndex = cardIndex
+                _uiState.update { it.copy(cards = cards) }
+            }
+            //If user click the same card again, just ignore
+            cardIndex -> {
+                return
+            }
+            //Flipping second card and checking if cards are matched by the same images.
+            else -> {
+                // '!!' meaning "IT'S NOT NULL!!!!!!!!"
+                val firstCardIndex = firstFlippedCardIndex!!
+                val firstCard = cards[firstCardIndex]
+                val secondCard = cards[cardIndex]
+                val isMatch = firstCard.imageUrl == secondCard.imageUrl
+
+                if (isMatch) {
+                    cards[firstCardIndex] = firstCard.copy(isMatched = true)
+                    cards[cardIndex] = secondCard.copy(isMatched = true)
+
+                    val newMatchesFound = currentState.matchesFound + 1
+                    val gameCompleted = newMatchesFound >= 4 //Checking if all 4 pairs are found.
+
+                    //Updating current state with new state
+                    _uiState.update {
+                        it.copy(
+                            cards = cards,
+                            matchesFound = newMatchesFound,
+                            gameCompleted = gameCompleted
+                        )
+                    }
+                    //Below blocks get triggered if cards don't match.
+                } else {
+                    _uiState.update {
+                        it.copy(
+                            cards = cards,
+                            isWaitingForMatch = true
+                        )
+                    }
+
+                    //Giving enough time to flip back for unmatched cards(Making a delay).
+                    viewModelScope.launch {
+
+                        //Waiting 1 second.
+                        kotlinx.coroutines.delay(1000)
+                        val updatedCards = _uiState.value.cards.toMutableList()
+
+                        //Flipped first and second cards back to non-face side.
+                        updatedCards[firstCardIndex] =
+                            updatedCards[firstCardIndex].copy(isFlipped = false)
+                        updatedCards[cardIndex] =
+                            updatedCards[cardIndex].copy(isFlipped = false)
+
+                        //This state update preventing user from clicking other cards.
+                        _uiState.update {
+                            it.copy(
+                                cards = updatedCards,
+                                isWaitingForMatch = false
+                            )
+                        }
+                    }
+                }
+                //Making sure reset the first flipped card for next matching.
+                firstFlippedCardIndex = null
+            }
+        }
+    }
+
+    /**
+     * ViewModel factory allows instantiating specific ViewModel. (Has two ViewModels in this app).
+     */
+    companion object {
+
+        fun viewModelFactory(imageRepository: ImageRepository): ViewModelProvider.Factory =
+            object : ViewModelProvider.Factory {
+
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                    return CardGameViewModel(imageRepository) as T
+                }
+            }
     }
 }

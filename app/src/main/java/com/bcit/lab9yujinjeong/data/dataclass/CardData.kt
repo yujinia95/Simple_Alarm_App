@@ -3,7 +3,7 @@ package com.bcit.lab9yujinjeong.data.dataclass
 //For card frame
 data class Card(
     val cardId: Int,
-    val imageUrl: String,
+    val imageUrl: ImageSrc,
     var isFlipped: Boolean = false,
     var isMatched: Boolean = false
 )
@@ -21,5 +21,5 @@ data class CardGameUiState(
     val isLoading: Boolean          = false,
     val isWaitingForMatch: Boolean  = false,
     val matchesFound: Int           = 0,
-    val GameCompleted: Boolean      = false
+    val gameCompleted: Boolean      = false
 )

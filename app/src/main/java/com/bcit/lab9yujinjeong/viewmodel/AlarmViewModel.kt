@@ -95,19 +95,16 @@ class AlarmViewModel(
     }
 
     /**
-     * Creating alarm viewModel instance. Make defining methods and properties are allowed without
-     * creating instance of the class.
+     * Companion object that provides a factory for creating AlarmViewModel instances.
+     * Factory is needed because our ViewModel has constructor parameters.
+     * Generic factory pattern allows instantiating specific ViewModel type with required
+     * dependencies.
      *
-     * Generic allows me to return different ViewModels.
-     *
-     * My AlarmViewModel has argument constructor, so have to use Factory. Which makes Android to
-     * create ViewModel.
-     *
-     * Returns ViewModelProvider.Factory(ViewModel instance).
+     * @Returns ViewModelProvider.Factory(ViewModel instance).
      */
     companion object {
 
-        fun alarmViewModelFactory(alarmDao: AlarmDao): ViewModelProvider.Factory =
+        fun viewModelFactory(alarmDao: AlarmDao): ViewModelProvider.Factory =
 
             //Creating anonymous inner factory class and implementing
             object: ViewModelProvider.Factory {
