@@ -17,8 +17,13 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
     }
+
+    versionCatalogs {
+        create("libs") {
+            // Your existing libraries...
+        }
+    }
 }
 
 rootProject.name = "Lab9YujinJeong"
 include(":app")
- 

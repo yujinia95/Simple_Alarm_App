@@ -2,6 +2,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    id("kotlin-kapt")
+    id("dagger.hilt.android.plugin")
 }
 
 android {
@@ -55,9 +57,14 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.androidx.room.common)
     implementation(libs.androidx.room.ktx)
+    implementation("androidx.navigation:navigation-compose:2.7.7")
     implementation("io.coil-kt.coil3:coil-compose:3.0.3")
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.0.3")
     implementation("androidx.compose.material:material-icons-extended:1.6.1")
+    implementation(libs.androidx.navigation.runtime.android)
+    implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
+    implementation("com.google.dagger:hilt-android:2.50")
+    kapt("com.google.dagger:hilt-android-compiler:2.50")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
